@@ -1,0 +1,45 @@
+name: build-template
+
+on:
+  workflow_call:
+    inputs:
+      sharedVolume:
+        required: true
+        type: string
+      unitTestsYml:
+        required: true
+        type: string
+      unitTestsServiceName:
+        required: true
+        type: string
+      servicesYml:
+        required: true
+        type: string
+      integrationTestsYml:
+        required: true
+        type: string
+      integrationTestsServiceName:
+        required: true
+        type: string
+      testResultsName:
+        required: true
+        type: string
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    env:
+      SHARED_VOLUME: ${{ inputs.sharedVolume }}
+    steps:
+      - uses: actions/checkout@v2
+      - name: Run unit tests
+        run: docker-compose -f ${{ inputs.unitTestsYml }} up --exit-code-from ${{ inputs.unitTestsServiceName }} ${{ inputs.unitTestsServiceName }}
+      - name: Start services
+        run: docker-compose -f ${{ inputs.servicesYml }} -f docker-compose.yml up -d
+      - name: Run integration tests
+        run: docker-compose -f ${{ inputs.integrationTestsYml }} up --exit-code-from ${{ inputs.integrationTestsServiceName }} ${{ inputs.integrationTestsServiceName }}
+      - uses: actions/upload-artifact@v2
+        if: always()
+        with:
+          name: ${{ inputs.testResultsName }}
+          path: ${{ inputs.sharedVolume }}/*.trx
